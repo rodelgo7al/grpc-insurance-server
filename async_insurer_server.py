@@ -21,102 +21,109 @@ import grpcinsurer_pb2_grpc
 
 import aiohttp
 import settings
-import sys
-
-_cleanup_coroutines = []
-_control_execution = True
+import json
 
 class GRPCInsurer(grpcinsurer_pb2_grpc.GRPCInsurerServicer):
+    def __init__(self, db_manager):
+        super().__init__()
+        self.db_manager = db_manager
+
+    def create_response(self, user):
+        user_policies = self.db_manager.fetch_data(f"SELECT * FROM policies WHERE mobile_number = '{user[2]}';")
+        if user_policies:
+            policies = []
+            for policy in user_policies:
+                policies.append(grpcinsurer_pb2.Policy(mobile_number=policy[1], premium=policy[2],type=policy[3]))
+
+        policy_holder = grpcinsurer_pb2.PolicyHolderResponse(
+            policy_holder=grpcinsurer_pb2.User(
+                name=user[1],
+                mobile_number=user[2]
+                ),
+            policies=policies
+            )
+        return policy_holder
+
     async def GetContactAndPoliciesById(
             self, request: grpcinsurer_pb2.UserRequest,
             context: grpc.aio.ServicerContext) -> grpcinsurer_pb2.PolicyHolderResponse:
 
-        # Test data
-        # request.id
-        policies = []
-        policies.append(grpcinsurer_pb2.Policy(mobile_number="111111111", premium=2000,type="homeowner"))
-        policies.append(grpcinsurer_pb2.Policy(mobile_number="222222222", premium=1000,type="personal_auto"))
-        policy_holder = grpcinsurer_pb2.PolicyHolderResponse(
-            policy_holder=grpcinsurer_pb2.User(
-                name="TestName",
-                mobile_number="123456789"
-                ),
-            policies=policies
-            )
-
-        return policy_holder
+        user = self.db_manager.fetch_data("SELECT * FROM users WHERE id = (?);", str(request.id))
+        
+        if user:
+            policy_holder = self.create_response(user[0])
+            return policy_holder
+        return None
 
     async def GetContactsAndPoliciesByMobileNumber(
             self, request: grpcinsurer_pb2.MobileNumberRequest,
             context: grpc.aio.ServicerContext) -> grpcinsurer_pb2.PolicyHolderResponse:
+
+        user = self.db_manager.fetch_data(f"SELECT * FROM users WHERE mobile_number = '{request.mobile_number}';")
         
-        # Test data
-        # request.mobile_number
-        policies = []
-        policies.append(grpcinsurer_pb2.Policy(mobile_number="111111111", premium=2000,type="homeowner"))
-        policy_holder = grpcinsurer_pb2.PolicyHolderResponse(
-            policy_holder=grpcinsurer_pb2.User(
-                name="TestName",
-                mobile_number="123456789"
-                ),
-            policies=policies
-            )
+        if user:
+            policy_holder = self.create_response(user[0])
+            return policy_holder
+        return None
 
-        return policy_holder
+class Server:
+    def __init__(self, db_manager):
+        self._control_execution = False
+        self._cleanup_coroutines = []
+        self.server_instance = None
+        self.db_manager = db_manager
 
-async def get_data_from_api():
-    async with aiohttp.ClientSession() as session:
-        async with session.get(settings.REST_API_ADDRESS+'/users/0') as response:
-            logging.info("Status: %s", response.status)
-            logging.info("Content-type: %s", response.headers['content-type'])
-            data = await response.text()
-            logging.info("Data: %s", data)
+    async def start(self):
+        self._control_execution = True
+        self.server_instance = grpc.aio.server()
+        await self.serve()
 
-async def Import():
-    if _control_execution:
-        await get_data_from_api()
-        # Import the data periodically
-        if settings.TIME > 0:
-                await asyncio.sleep(settings.TIME)
-                await Import()
+    async def get_data_from_api(self, endpoint):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(settings.REST_API_ADDRESS+endpoint) as response:
+                logging.info("Status: %s", response.status)
+                logging.info("Content-type: %s", response.headers['content-type'])
+                text = await response.text()
+                return json.loads(text)
+                
+    async def Import(self):
+        if self._control_execution:
+            logging.info("Importing data from REST API...")
+            users = await self.get_data_from_api('/users/'+settings.AGENT_ID)
+            policies = await self.get_data_from_api('/policies/'+settings.AGENT_ID)
 
+            self.db_manager.insert_users(settings.AGENT_ID, users)
+            self.db_manager.insert_policies(settings.AGENT_ID, policies)
 
-async def serve() -> None:
-    grpcinsurer_pb2_grpc.add_GRPCInsurerServicer_to_server(GRPCInsurer(), server)
-    listen_addr = '[::]:50051'
-    server.add_insecure_port(listen_addr)
+            logging.info("Data saved into database")
 
-    logging.info("Starting server on %s", listen_addr)
-    await server.start()
-
-    logging.info("Importing data from REST API...")
-    asyncio.ensure_future(Import())
-
-    _cleanup_coroutines.append(server_graceful_shutdown())
-    await server.wait_for_termination()
+            # Import the data periodically
+            if settings.TIME > 0:
+                    await asyncio.sleep(settings.TIME)
+                    await self.Import()
 
 
-async def server_graceful_shutdown():
-    # Shuts down the server with 5 seconds of grace period. During the
-    # grace period, the server won't accept new connections and allow
-    # existing RPCs to continue within the grace period.
-    logging.info("Starting graceful shutdown...")
-    await server.stop(5)
-    logging.info("Server stopped.")
+    async def serve(self):
+        grpcinsurer_pb2_grpc.add_GRPCInsurerServicer_to_server(GRPCInsurer(self.db_manager), self.server_instance)
+        listen_addr = '[::]:50051'
+        self.server_instance.add_insecure_port(listen_addr)
 
-if __name__ == '__main__':
-    _control_execution = True
-    logging.basicConfig(level=logging.DEBUG)
-    loop = asyncio.get_event_loop()
-    server = grpc.aio.server()
-    asyncio.ensure_future(serve())
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        _control_execution = False
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.run_until_complete(*_cleanup_coroutines)
-        loop.close()
-        sys.exit()
+        logging.info("Starting server on %s", listen_addr)
+        await self.server_instance.start()
+
+        asyncio.ensure_future(self.Import())
+
+        self._cleanup_coroutines.append(self.server_graceful_shutdown())
+        await self.server_instance.wait_for_termination()
+
+
+    async def server_graceful_shutdown(self):
+        # Shuts down the server with 5 seconds of grace period. During the
+        # grace period, the server won't accept new connections and allow
+        # existing RPCs to continue within the grace period.
+        logging.info("Starting graceful shutdown...")
+        self._control_execution = False
+        await self.server_instance.stop(5)
+        logging.info("Server stopped.")
+
+

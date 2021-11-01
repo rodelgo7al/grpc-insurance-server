@@ -12,24 +12,33 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+# gRPC Client implementation
+
 import asyncio
-import logging
 
 import grpc
 import grpcinsurer_pb2
 import grpcinsurer_pb2_grpc
 
-
 async def run() -> None:
     async with grpc.aio.insecure_channel('localhost:50051') as channel:
         stub = grpcinsurer_pb2_grpc.GRPCInsurerStub(channel)
-        response = await stub.GetContactAndPoliciesById(grpcinsurer_pb2.UserRequest(id=10))
-    print("Policy Holder:")
-    print(response.policy_holder)
-    print("Policies:")
-    print(response.policies)
+        response = await stub.GetContactAndPoliciesById(grpcinsurer_pb2.UserRequest(id=1))
+
+        print("Policy Holder:")
+        print(response.policy_holder)
+        print("Policies:")
+        print(response.policies)
+
+    async with grpc.aio.insecure_channel('localhost:50051') as channel:
+        stub = grpcinsurer_pb2_grpc.GRPCInsurerStub(channel)
+        response = await stub.GetContactsAndPoliciesByMobileNumber(grpcinsurer_pb2.MobileNumberRequest(mobile_number="1234567890"))
+        
+        print("Policy Holder:")
+        print(response.policy_holder)
+        print("Policies:")
+        print(response.policies)
 
 
 if __name__ == '__main__':
-    logging.basicConfig()
     asyncio.run(run())

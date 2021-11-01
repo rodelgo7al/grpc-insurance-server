@@ -16,5 +16,6 @@
 
 REST_API_ADDRESS = "http://localhost:8080"
 TIME = 0
-
+DB_FILE = 'db/Data.db'
+AGENT_ID = "0"
 
