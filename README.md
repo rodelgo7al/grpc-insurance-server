@@ -42,6 +42,20 @@ Or
 ```
 ./execute_app.sh
 ```
+
+#### Server arguments
+`main_server.py` accepts two arguments:
+- **-ams-api-url**: REST API address. 
+  - Default value: http://localhost:8080.
+- **-schedule_period**: schedule mechanism (minutes) to import data from REST API to database. 
+  - Default value: 0.
+
+Example
+```
+python main_server.py http://example.com 5
+```
+
+The `execute_app.sh` script can be modified with the arguments needed.
 ### Client
 To execute the GRPC Client, run the command below
 ```

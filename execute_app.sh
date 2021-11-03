@@ -25,10 +25,14 @@ trap killbg EXIT
 pids=()
 # Run REST API
 python app/rest_api_server.py &
+sleep 1
 pids+=($!)
-# Run GRPC Server
-python main_server.py &
+# Run GRPC Server 
+# Modify flags as needed: (flags: -ams-api-url -schedule_period)
+python main_server.py "http://localhost:8080" 0 &
 pids+=($!)
 
 sleep 5
 read -p $'Press any key to exit...\n===========\n'
+
+echo "Exit" 

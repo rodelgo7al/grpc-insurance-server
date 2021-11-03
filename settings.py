@@ -14,8 +14,12 @@
 
 #  Settings file
 
-REST_API_ADDRESS = "http://localhost:8080"
-TIME = 10
+# Default arguments for flags -ams-api-url and -schedule_period
+AMS_API_URL = "http://localhost:8080"
+SCHEDULE_PERIOD = 0
+
+# Database file
 DB_FILE = 'db/Data.db'
+# Agent ID that uses this app
 AGENT_ID = "0"
 

@@ -15,18 +15,23 @@
 from app.async_insurer_client import GRPCClient
 import asyncio
 
-def main():
-    client = GRPCClient()
-    id = 5
+def show_data_by_id(client, id):
     print(f"Getting contact and policies from user with id: {id}")
     res = asyncio.run(client.get_contact_and_policies_by_id(id))
     print("Result:")
     print(res)
-    number = "1234567892"
+
+def show_data_by_mobile(client, number):
     print(f"Getting contact and policies from user with phone number: {number}")
     res = asyncio.run(client.get_contact_and_policies_by_mobile(number))
     print("Result:")
     print(res)
+
+def main():
+    client = GRPCClient()
+    
+    show_data_by_id(client, 5)
+    show_data_by_mobile(client, "1234567892")
 
 if __name__ == "__main__":
     main()

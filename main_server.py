@@ -24,7 +24,30 @@ import traceback
 
 from app.async_insurer_server import GRPCServer
 
-def main():
+def main(argv):
+    # Check arguments -ams-api-url -schedule_period
+    # -ams-api-url: REST API address
+    # -schedule_period: schedule mechanism (minutes) to import data
+    #   Default values (defined in settings.py):
+    #       -ams-api-url: "http://localhost:8080"
+    #       -schedule_period: 0 
+    if argv:
+        if len(argv) > 2:
+            print("Incorrect number of arguments. Expected 1 (-ams-api-url) or 2 (-ams-api-url -schedule_period)")
+            print(f"Arguments received: {len(argv)}")
+            return
+        else:
+            settings.AMS_API_URL = str(argv[0])
+            if len(argv) == 2:
+                if not argv[1].isdigit():
+                    print(f"Error: Expected number for the schedule_period. Received: {argv[1]}")
+                    return
+                settings.SCHEDULE_PERIOD = int(argv[1])
+    
+    print("Application variables:")
+    print(f"\tams-api-url: {settings.AMS_API_URL}")
+    print(f"\tschedule_period: {settings.SCHEDULE_PERIOD}")
+    
     logging.basicConfig(level=logging.INFO)
 
     loop = asyncio.get_event_loop()
@@ -54,11 +77,12 @@ def main():
         logging.error(traceback.format_exc())
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.run_until_complete(*server._cleanup_coroutines)
+        if server._cleanup_coroutines:
+            loop.run_until_complete(*server._cleanup_coroutines)
         loop.close()
         db_manager.close()
         
         sys.exit()
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

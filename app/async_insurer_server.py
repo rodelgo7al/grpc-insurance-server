@@ -76,7 +76,7 @@ class GRPCServer:
 
     async def get_data_from_api(self, endpoint):
         async with aiohttp.ClientSession() as session:
-            async with session.get(settings.REST_API_ADDRESS+endpoint) as response:
+            async with session.get(settings.AMS_API_URL+endpoint) as response:
                 logging.debug("Status: %s", response.status)
                 logging.debug("Content-type: %s", response.headers['content-type'])
                 text = await response.text()
@@ -96,10 +96,10 @@ class GRPCServer:
             self.db_manager.insert_policies(settings.AGENT_ID, policies)
 
             logging.info("Data saved into database")
-
+            
             # Import the data periodically
-            if self._control_execution and settings.TIME > 0:
-                    await asyncio.sleep(settings.TIME)
+            if self._control_execution and settings.SCHEDULE_PERIOD > 0:
+                    await asyncio.sleep(settings.SCHEDULE_PERIOD * 60)
                     await self.Import()
 
 
