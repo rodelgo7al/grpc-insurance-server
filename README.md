@@ -30,12 +30,22 @@ The data received from the REST API is stored and queried in this file, defined 
 - Agents_policies (id, agent_id, policy_id)
 
 ## Launch
-To execute this project is neccessary to run the REST Api, the gRPC Server and the gRPC Client.
+To execute this project is neccessary to run the REST Api and the gRPC Server.
 
+### Server
+Run
 ```
-python rest_api_server.py
-python main.py
-python async_insurer_client.py
+python app/rest_api_server.py
+python main_server.py
+```
+Or
+```
+./execute_app.sh
+```
+### Client
+To execute the GRPC Client, run the command below
+```
+python main_client.py
 ```
 
 ## Test
