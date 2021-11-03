@@ -38,6 +38,13 @@ python main.py
 python async_insurer_client.py
 ```
 
+## Test
+There is a shell script that executes some unit tests for the application:
+
+```
+./tests/execute_tests.sh
+```
+
 ## References
 
 https://grpc.io/docs/languages/python/basics/

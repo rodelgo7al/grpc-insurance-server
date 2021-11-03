@@ -12,10 +12,21 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-#  Settings file
+from app.async_insurer_client import GRPCClient
+import asyncio
 
-REST_API_ADDRESS = "http://localhost:8080"
-TIME = 10
-DB_FILE = 'db/Data.db'
-AGENT_ID = "0"
+def main():
+    client = GRPCClient()
+    id = 5
+    print(f"Getting contact and policies from user with id: {id}")
+    res = asyncio.run(client.get_contact_and_policies_by_id(id))
+    print("Result:")
+    print(res)
+    number = "1234567892"
+    print(f"Getting contact and policies from user with phone number: {number}")
+    res = asyncio.run(client.get_contact_and_policies_by_mobile(number))
+    print("Result:")
+    print(res)
 
+if __name__ == "__main__":
+    main()

@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import grpcinsurer_pb2 as grpcinsurer__pb2
+import app.grpcinsurer_pb2 as grpcinsurer__pb2
 
 
 class GRPCInsurerStub(object):

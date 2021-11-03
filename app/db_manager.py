@@ -15,11 +15,15 @@
 import sqlite3
 import re
 import logging
+import os
 
 class DBManager:
     def __init__(self, db_file):
-        self.con = sqlite3.connect(db_file)
-        logging.info(f"Database {db_file} connected")
+        if os.path.exists(db_file):
+            self.con = sqlite3.connect(db_file)
+            logging.info(f"Database {db_file} connected")
+        else:
+            raise Exception(f"File {db_file} does not exist.")
 
     def close(self):
         self.con.close()

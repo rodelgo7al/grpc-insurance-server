@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from db_manager import DBManager
+from app.db_manager import DBManager
 import settings
 
 import asyncio
@@ -20,30 +20,43 @@ import logging
 
 import settings
 import sys
+import traceback
 
-from async_insurer_server import Server
+from app.async_insurer_server import GRPCServer
 
 def main():
     logging.basicConfig(level=logging.INFO)
 
     loop = asyncio.get_event_loop()
-
-    db_manager = DBManager(settings.DB_FILE)
-    db_manager.create_agent(settings.AGENT_ID)
-
-    server = Server(db_manager)
-    asyncio.ensure_future(server.start())
+    try:
+        db_manager = DBManager(settings.DB_FILE)
+    except:
+        logging.info("An exception ocurred. Ending application...")
+        loop.close()
+        raise
 
     try:
-        loop.run_forever()
+        db_manager.create_agent(settings.AGENT_ID)
+        server = GRPCServer(db_manager)
+        group = asyncio.gather(server.start())
+    except:
+        logging.info("An exception ocurred. Ending application6...") 
+        db_manager.close()
+        loop.close()
+        raise
+
+    try:
+        loop.run_until_complete(group)
     except KeyboardInterrupt:
         pass
+    except Exception as er:
+        logging.info("An exception ocurred. Ending application...")
+        logging.error(traceback.format_exc())
     finally:
-        db_manager.close()
-        loop.run_until_complete(server.server_graceful_shutdown())
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.run_until_complete(*server._cleanup_coroutines)
         loop.close()
+        db_manager.close()
         
         sys.exit()
 

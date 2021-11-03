@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #    Copyright 2021 Alberto Rodelgo
 
 #    Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +14,26 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-#  Settings file
 
-REST_API_ADDRESS = "http://localhost:8080"
-TIME = 10
-DB_FILE = 'db/Data.db'
-AGENT_ID = "0"
+killbg() {
+        for p in "${pids[@]}" ; do
+                kill "$p";
+        done
+}
 
+# Kill all processes when EXIT
+trap killbg EXIT
+pids=()
+# Run REST API
+python app/rest_api_server.py &
+pids+=($!)
+# Run GRPC Server
+python main_server.py &
+pids+=($!)
+
+# Wait for initialization
+sleep 2
+
+cd tests
+# Run tests
+python app_unittest.py -v
